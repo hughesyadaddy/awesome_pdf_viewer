@@ -9,4 +9,8 @@ environment:
 dev_dependencies:
   mocktail: ^0.3.0
   test: ^1.19.2
-  very_good_analysis: ^3.1.0
+  very_good_analysis: ^4.0.0+1
+dependencies:
+  another_xlider: ^3.0.1
+  pdfx: ^2.3.0
+  scidart: ^0.0.2-dev.12
