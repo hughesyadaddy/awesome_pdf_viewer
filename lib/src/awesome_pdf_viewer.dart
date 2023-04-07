@@ -67,6 +67,7 @@ class _PdfPageState extends State<AwesomePdfViewer>
   @override
   void initState() {
     super.initState();
+    print(widget.pdfPath);
     WidgetsBinding.instance.addObserver(this);
     _pdfController = PdfController(
       document: PdfDocument.openAsset(

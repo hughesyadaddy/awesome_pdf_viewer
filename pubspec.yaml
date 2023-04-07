@@ -1,5 +1,5 @@
 name: awesome_pdf_viewer
-description: A Awesome PDF Viewer with easy navigation, sharing, and print capabilities.
+description: An Awesome PDF Viewer with easy navigation, sharing, and print capabilities.
 version: 0.1.0+1
 
 environment:
@@ -14,5 +14,3 @@ dependencies:
   another_xlider: ^3.0.1
   pdfx: ^2.3.0
   scidart: ^0.0.2-dev.12
-
-

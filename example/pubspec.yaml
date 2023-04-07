@@ -1,5 +1,5 @@
-name: example
-description: A new Flutter project.
+name: Awesome_PDF_Viewer
+description: An Awesome PDF Viewer with easy navigation, sharing, and print capabilities.
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -15,7 +15,6 @@ dependencies:
   pdfx: ^2.3.0
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
@@ -27,7 +26,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-assets:
-  - assets/test_multi_page.pdf
-  - assets/test_single_page.pdf
-  - assets/test_mass_page.pdf
+  assets:
+    - assets/test_multi_page.pdf
+    - assets/test_single_page.pdf
+    - assets/test_mass_page.pdf
