@@ -2,7 +2,6 @@ name: awesome_pdf_viewer
 description: A Awesome PDF Viewer with easy navigation, sharing, and print capabilities.
 version: 0.1.0+1
 
-
 environment:
   sdk: ">=2.18.0 <3.0.0"
 
@@ -10,7 +9,10 @@ dev_dependencies:
   mocktail: ^0.3.0
   test: ^1.19.2
   very_good_analysis: ^4.0.0+1
+
 dependencies:
   another_xlider: ^3.0.1
   pdfx: ^2.3.0
   scidart: ^0.0.2-dev.12
+
+
