@@ -19,9 +19,9 @@ dependencies:
       url: https://github.com/hughesyadaddy/awesome_pdf_viewer.git
 ```
 
-## Add Awesoome PDF Viewer to the a new push Navigator
+## Push the Awesome PDF View page with a path to a Pdf Asset.
 
-Add the AwesomePdfViewer page to your navigator and push this Pdf viewer.
+Add the AwesomePdfViewer page to your navigator and push with a argument PdfPath pointing to your Pdf Asset File.
 
 ```dart
  Navigator.push(
