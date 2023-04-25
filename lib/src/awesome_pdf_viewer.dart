@@ -2,6 +2,7 @@ import 'package:another_xlider/another_xlider.dart';
 import 'package:another_xlider/models/handler.dart';
 import 'package:another_xlider/models/trackbar.dart';
 import 'package:async/async.dart';
+import 'package:awesome_pdf_viewer/src/debouncer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
@@ -24,16 +25,7 @@ class _PdfPageState extends State<AwesomePdfViewer>
   List<PdfPageImage> _thumbnailImageList = [];
   late final PdfController _pdfController;
   late final PdfController _pdfControllerSlider;
-  CancelableOperation<dynamic>? _cancellableOperation;
-
-  Future<dynamic> _fromCancelable(Future<dynamic> future) async {
-    await _cancellableOperation?.cancel();
-    _cancellableOperation =
-        CancelableOperation.fromFuture(future, onCancel: () {
-      print('Operation Cancelled');
-    });
-    return _cancellableOperation!.value;
-  }
+  final _debouncer = Debouncer(delay: const Duration(milliseconds: 500));
 
   Future<void> _generateSliderImages(double width) async {
     final imageList = <PdfPageImage>[];
@@ -86,15 +78,16 @@ class _PdfPageState extends State<AwesomePdfViewer>
   void dispose() {
     _pdfController.dispose();
     _pdfControllerSlider.dispose();
+    _debouncer.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeMetrics() {
-    _fromCancelable(_generateSliderImages(
-      WidgetsBinding.instance.window.physicalSize.width,
-    ));
+    _debouncer.run(() => _generateSliderImages(
+          WidgetsBinding.instance.window.physicalSize.width,
+        ));
     print(
         'didChangeMetrics new width: ${WidgetsBinding.instance.window.physicalSize.width}');
     super.didChangeMetrics();
