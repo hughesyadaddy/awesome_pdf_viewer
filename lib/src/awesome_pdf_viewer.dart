@@ -8,12 +8,17 @@ import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:scidart/numdart.dart';
 
+/// {@template AwesomePDFViewer}
+/// A class that handles a beautiful and elegant PDF Viewer.
+/// {@endtemplate}
 class AwesomePdfViewer extends StatefulWidget {
+  /// {@macro awesome PDF Viewer}
   const AwesomePdfViewer({
     super.key,
     required this.pdfPath,
   });
 
+  ///The argument of the current path of the PDF to be viewed.
   final String pdfPath;
 
   @override
@@ -34,7 +39,6 @@ class _PdfPageState extends State<AwesomePdfViewer>
     final thumbnailCount = pagesCount >= (width / 130).round()
         ? (width / 130).round()
         : pagesCount;
-    print('We have $thumbnailCount thumnails');
     final evenlySpacedArrayPoints = linspace(
       1,
       pagesCount.toDouble(),
@@ -59,7 +63,6 @@ class _PdfPageState extends State<AwesomePdfViewer>
   @override
   void initState() {
     super.initState();
-    print(widget.pdfPath);
     WidgetsBinding.instance.addObserver(this);
     _pdfController = PdfController(
       document: PdfDocument.openAsset(
@@ -85,11 +88,11 @@ class _PdfPageState extends State<AwesomePdfViewer>
 
   @override
   void didChangeMetrics() {
-    _debouncer.run(() => _generateSliderImages(
-          WidgetsBinding.instance.window.physicalSize.width,
-        ));
-    print(
-        'didChangeMetrics new width: ${WidgetsBinding.instance.window.physicalSize.width}');
+    _debouncer.run(
+      () => _generateSliderImages(
+        WidgetsBinding.instance.window.physicalSize.width,
+      ),
+    );
     super.didChangeMetrics();
   }
 
