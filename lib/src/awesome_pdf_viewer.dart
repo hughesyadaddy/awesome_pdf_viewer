@@ -1,12 +1,11 @@
 import 'package:another_xlider/another_xlider.dart';
 import 'package:another_xlider/models/handler.dart';
 import 'package:another_xlider/models/trackbar.dart';
-import 'package:async/async.dart';
-import 'package:awesome_pdf_viewer/src/debouncer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:scidart/numdart.dart';
+
+import 'package:awesome_pdf_viewer/src/debouncer.dart';
 
 /// {@template AwesomePDFViewer}
 /// A class that handles a beautiful and elegant PDF Viewer.
@@ -31,6 +30,24 @@ class _PdfPageState extends State<AwesomePdfViewer>
   late final PdfController _pdfController;
   late final PdfController _pdfControllerSlider;
   final _debouncer = Debouncer(delay: const Duration(milliseconds: 500));
+
+  List<double> linspace(double start, double stop,
+      {int num = 50, bool endpoint = true}) {
+    if (num <= 0) {
+      throw ('num need be igual or greater than 0');
+    }
+
+    double delta;
+    if (endpoint) {
+      delta = (stop - start) / (num - 1);
+    } else {
+      delta = (stop - start) / num;
+    }
+
+    final space = List<double>.generate(num, (i) => start + delta * i);
+
+    return space;
+  }
 
   Future<void> _generateSliderImages(double width) async {
     final imageList = <PdfPageImage>[];

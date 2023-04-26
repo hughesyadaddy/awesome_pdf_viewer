@@ -13,4 +13,3 @@ dev_dependencies:
 dependencies:
   another_xlider: ^3.0.1
   pdfx: ^2.3.0
-  scidart: ^0.0.2-dev.12
