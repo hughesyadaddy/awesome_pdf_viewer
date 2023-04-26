@@ -1,11 +1,14 @@
+import 'dart:io';
+
 import 'package:another_xlider/another_xlider.dart';
 import 'package:another_xlider/models/handler.dart';
 import 'package:another_xlider/models/trackbar.dart';
+import 'package:awesome_pdf_viewer/src/debouncer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
-
-import 'package:awesome_pdf_viewer/src/debouncer.dart';
+import 'package:printing/printing.dart';
+import 'package:flutter/services.dart' show Uint8List, rootBundle;
 
 /// {@template AwesomePDFViewer}
 /// A class that handles a beautiful and elegant PDF Viewer.
@@ -118,6 +121,28 @@ class _PdfPageState extends State<AwesomePdfViewer>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Awesome PDF Viewer'),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              final byteData = await rootBundle.load(widget.pdfPath);
+              final bytes = byteData.buffer.asUint8List();
+              await Printing.sharePdf(
+                bytes: bytes,
+              );
+            },
+            icon: const Icon(Icons.ios_share),
+          ),
+          IconButton(
+            onPressed: () async {
+              final byteData = await rootBundle.load(widget.pdfPath);
+              final bytes = byteData.buffer.asUint8List();
+              await Printing.layoutPdf(
+                onLayout: (_) async => bytes,
+              );
+            },
+            icon: const Icon(Icons.print),
+          )
+        ],
       ),
       body: Stack(
         children: [
