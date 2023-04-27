@@ -170,8 +170,15 @@ class _PdfPageState extends State<AwesomePdfViewer>
               child: PdfPageNumber(
                 controller: _pdfController,
                 builder: (_, loadingState, page, pagesCount) {
-                  if (pagesCount == null || _thumbnailImageList.isEmpty)
-                    return Container();
+                  if (pagesCount == null || _thumbnailImageList.isEmpty) {
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.blue,
+                      ),
+                    );
+                  }
                   return Center(
                     child: Container(
                       height: 60,
