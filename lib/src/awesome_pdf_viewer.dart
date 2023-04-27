@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:another_xlider/another_xlider.dart';
 import 'package:another_xlider/models/handler.dart';
@@ -37,15 +38,14 @@ class _PdfPageState extends State<AwesomePdfViewer>
   List<double> linspace(
     double start,
     double stop, {
-    int num = 50,
-    bool endpoint = true,
+    int num = 10,
   }) {
     if (num <= 0) {
       throw ('num need be igual or greater than 0');
     }
 
     double delta;
-    if (endpoint) {
+    if (num > 1) {
       delta = (stop - start) / (num - 1);
     } else {
       delta = (stop - start) / num;
@@ -67,7 +67,6 @@ class _PdfPageState extends State<AwesomePdfViewer>
       1,
       pagesCount.toDouble(),
       num: thumbnailCount,
-      endpoint: pagesCount != 1,
     );
 
     for (final invidualPoint in evenlySpacedArrayPoints) {
@@ -98,7 +97,7 @@ class _PdfPageState extends State<AwesomePdfViewer>
         widget.pdfPath,
       ),
     );
-    _generateSliderImages(WidgetsBinding.instance.window.physicalSize.width);
+    _generateSliderImages(window.physicalSize.width);
   }
 
   @override
