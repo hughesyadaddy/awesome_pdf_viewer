@@ -34,8 +34,12 @@ class _PdfPageState extends State<AwesomePdfViewer>
   late final PdfController _pdfControllerSlider;
   final _debouncer = Debouncer(delay: const Duration(milliseconds: 500));
 
-  List<double> linspace(double start, double stop,
-      {int num = 50, bool endpoint = true}) {
+  List<double> linspace(
+    double start,
+    double stop, {
+    int num = 50,
+    bool endpoint = true,
+  }) {
     if (num <= 0) {
       throw ('num need be igual or greater than 0');
     }

@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 
 class Debouncer {
+  Debouncer({required this.delay});
   final Duration delay;
   Timer? _timer;
-
-  Debouncer({required this.delay});
 
   void run(VoidCallback callback) {
     _timer?.cancel();
