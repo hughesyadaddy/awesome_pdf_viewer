@@ -1,310 +1,432 @@
 import 'dart:io';
-import 'dart:ui';
+import 'dart:ui' as ui;
 
-import 'package:another_xlider/another_xlider.dart';
-import 'package:another_xlider/models/handler.dart';
-import 'package:another_xlider/models/trackbar.dart';
 import 'package:awesome_pdf_viewer/src/debouncer.dart';
+import 'package:awesome_pdf_viewer/src/slider_thumb_image.dart';
+import 'package:awesome_pdf_viewer/src/slider_track_shape.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:internet_file/internet_file.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:printing/printing.dart';
-import 'package:flutter/services.dart' show Uint8List, rootBundle;
 
-/// {@template AwesomePDFViewer}
-/// A class that handles a beautiful and elegant PDF Viewer.
-/// {@endtemplate}
+/// An awesome PDF viewer widget that displays PDF files within a Flutter application.
+///
+/// This widget takes in the path of the PDF to be displayed and provides various
+/// features like sharing, printing, and navigation.
 class AwesomePdfViewer extends StatefulWidget {
-  /// {@macro awesome PDF Viewer}
-  const AwesomePdfViewer({
-    super.key,
-    required this.pdfPath,
-  });
+  /// Creates an instance of AwesomePdfViewer.
+  ///
+  /// The [pdfPath] parameter must not be null and represents the path to the PDF file.
+  const AwesomePdfViewer({super.key, required this.pdfPath, this.appBarTitle});
 
-  ///The argument of the current path of the PDF to be viewed.
+  /// The path or URL to the PDF file that needs to be displayed.
   final String pdfPath;
 
+  /// The App Bar Title
+  final String? appBarTitle;
+
   @override
-  State<AwesomePdfViewer> createState() => _PdfPageState();
+  State<AwesomePdfViewer> createState() => _AwesomePdfViewer();
 }
 
-class _PdfPageState extends State<AwesomePdfViewer>
-    with WidgetsBindingObserver {
-  List<PdfPageImage> _thumbnailImageList = [];
+class _AwesomePdfViewer extends State<AwesomePdfViewer>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final PdfController _pdfController;
-  late final PdfController _pdfControllerSlider;
-  final _debouncer = Debouncer(delay: const Duration(milliseconds: 500));
+  late final AnimationController _animationController;
 
-  List<double> linspace(
-    double start,
-    double stop, {
-    int num = 10,
-  }) {
-    if (num <= 0) {
-      throw ('num need be igual or greater than 0');
-    }
+  // State variables
+  final FocusNode _focusNode = FocusNode();
+  List<PdfPageImage> _thumbnailImageList = [];
+  ui.Image? _sliderImage;
+  int _currentPage = 1;
+  bool _isDragging = false;
+  bool _pageIsActive = true;
 
-    double delta;
-    if (num > 1) {
-      delta = (stop - start) / (num - 1);
-    } else {
-      delta = (stop - start) / num;
-    }
-
-    final space = List<double>.generate(num, (i) => start + delta * i);
-
-    return space;
-  }
-
-  Future<void> _generateSliderImages(double width) async {
-    final imageList = <PdfPageImage>[];
-    final document = await PdfDocument.openAsset(widget.pdfPath);
-    final pagesCount = document.pagesCount;
-    final thumbnailCount = pagesCount >= (width / 130).round()
-        ? (width / 130).round()
-        : pagesCount;
-    final evenlySpacedArrayPoints = linspace(
-      1,
-      pagesCount.toDouble(),
-      num: thumbnailCount,
-    );
-
-    for (final invidualPoint in evenlySpacedArrayPoints) {
-      final page = await document.getPage(invidualPoint.round());
-      final pageImage =
-          await page.render(width: page.width / 20, height: page.height / 20);
-      await page.close();
-      imageList.add(pageImage!);
-    }
-    await document.close();
-
-    setState(() {
-      _thumbnailImageList = imageList;
-    });
-  }
+  // Debouncers for delaying resize and slider image update
+  final _resizeScreenDebouncer =
+      Debouncer(delay: const Duration(milliseconds: 500));
+  final _sliderImageDebouncer =
+      Debouncer(delay: const Duration(milliseconds: 100));
 
   @override
   void initState() {
     super.initState();
+    _initializePage();
+  }
+
+  // Initialize the page
+  void _initializePage() {
+    _pageIsActive = true;
     WidgetsBinding.instance.addObserver(this);
-    _pdfController = PdfController(
-      document: PdfDocument.openAsset(
-        widget.pdfPath,
-      ),
+    _pdfController = _createPdfController();
+    _animationController = _createAnimationController();
+    _generateInitialSliderImages();
+    _setInitialPageImage();
+  }
+
+  // Create PDF Controller
+  PdfController _createPdfController() {
+    return PdfController(
+      document: _getDocument(),
     );
-    _pdfControllerSlider = PdfController(
-      document: PdfDocument.openAsset(
-        widget.pdfPath,
-      ),
+  }
+
+  // Create Animation Controller
+  AnimationController _createAnimationController() {
+    return AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat();
+  }
+
+  // Generate initial images for the slider
+  void _generateInitialSliderImages() {
+    _generateSliderImages(
+      PlatformDispatcher.instance.views.first.physicalSize.width,
     );
-    _generateSliderImages(window.physicalSize.width);
+  }
+
+  // Set initial page image
+  void _setInitialPageImage() {
+    _getPageImage(_currentPage);
+  }
+
+  // Dispose page and controllers
+  void _disposePage() {
+    _pageIsActive = false;
+    _pdfController.dispose();
+    _animationController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
   }
 
   @override
   void dispose() {
-    _pdfController.dispose();
-    _pdfControllerSlider.dispose();
-    _debouncer.cancel();
-    WidgetsBinding.instance.removeObserver(this);
+    _disposePage();
     super.dispose();
   }
 
+  // Resize screen and regenerate thumbnails
   @override
   void didChangeMetrics() {
-    _debouncer.run(
-      () => _generateSliderImages(
-        WidgetsBinding.instance.window.physicalSize.width,
-      ),
-    );
+    if (_pageIsActive) {
+      _resizeScreenDebouncer.run(() {
+        _generateSliderImages(
+          PlatformDispatcher.instance.views.first.physicalSize.width,
+        );
+      });
+    }
     super.didChangeMetrics();
+  }
+
+  // Convert PdfPageImage to ui.Image
+  Future<ui.Image> _getUiImage(Uint8List byteData) async {
+    final codec = await ui.instantiateImageCodec(byteData);
+    return (await codec.getNextFrame()).image;
+  }
+
+  // Retrieve PDF document from the path
+  Future<PdfDocument> _getDocument() async {
+    if (Uri.parse(widget.pdfPath).isAbsolute) {
+      return PdfDocument.openData(InternetFile.get(widget.pdfPath));
+    } else if (widget.pdfPath.startsWith('assets/')) {
+      return PdfDocument.openAsset(widget.pdfPath);
+    } else {
+      return PdfDocument.openFile(widget.pdfPath);
+    }
+  }
+
+  Future<Uint8List> _getFileBytes(String pathOrUrl) async {
+    if (Uri.parse(pathOrUrl).isAbsolute) {
+      // It's a URL
+      final response = await http.get(Uri.parse(pathOrUrl));
+      if (response.statusCode == 200) {
+        return Uint8List.fromList(response.bodyBytes);
+      } else {
+        throw Exception('Failed to load the file from the URL');
+      }
+    } else {
+      // It's a local file path
+      final file = File(pathOrUrl);
+      if (await file.exists()) {
+        return file.readAsBytes();
+      } else {
+        throw Exception('Local file does not exist');
+      }
+    }
+  }
+
+  // Generate thumbnails for the slider
+  Future<void> _generateSliderImages(double width) async {
+    // Get the document from the given path
+    final document = await _pdfController.document;
+
+    // Total number of pages in the document
+    final pageCount = document.pagesCount;
+
+    // Calculate the number of thumbnails to generate based on the screen width
+    final thumbnailCount = (width / 130).round().clamp(0, pageCount);
+
+    debugPrint('We have $thumbnailCount thumbnails');
+
+    // Generate a list of points (page numbers) for which to capture thumbnails
+    final points = _calculateThumbnailPoints(pageCount, thumbnailCount);
+
+    // Generate thumbnail images
+    final imageList = await _generateThumbnails(document, points);
+
+    // Update the thumbnail list in the state
+    if (mounted) {
+      // <-- Check if the widget is still mounted
+      setState(() {
+        _thumbnailImageList = imageList;
+      });
+    }
+  }
+
+// Calculate thumbnail points based on the number of pages and required thumbnails
+  List<double> _calculateThumbnailPoints(int pageCount, int thumbnailCount) {
+    if (thumbnailCount <= 1) {
+      return [1.0]; // or return a value that makes sense in your context
+    }
+
+    return List<double>.generate(
+      thumbnailCount,
+      (i) => 1.0 + i * ((pageCount - 1) / (thumbnailCount - 1)),
+    );
+  }
+
+// Generate thumbnails for given points (page numbers)
+  Future<List<PdfPageImage>> _generateThumbnails(
+      PdfDocument document, List<double> points) async {
+    final imageList = <PdfPageImage>[];
+    for (final point in points) {
+      final page = await document.getPage(point.round());
+      try {
+        final pageImage = await page.render(
+          width: page.width / 10,
+          height: page.height / 10,
+        );
+        if (pageImage != null) {
+          imageList.add(pageImage);
+        }
+      } finally {
+        await page.close();
+      }
+    }
+    return imageList;
+  }
+
+// Fetch image of a specific page number
+  Future<void> _getPageImage(int pageNum) async {
+    final document = await _pdfController.document;
+    final page = await document.getPage(pageNum);
+    try {
+      final image = await page.render(
+        width: page.width / 10,
+        height: page.height / 10,
+      );
+      if (image != null) {
+        final newImg = await _getUiImage(image.bytes);
+        setState(() {
+          _sliderImage = newImg;
+        });
+      }
+    } finally {
+      await page.close();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Awesome PDF Viewer'),
+        title: Text(
+          widget.appBarTitle ?? 'PDF Viewer',
+        ),
         actions: [
           IconButton(
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              Theme.of(context).platform == TargetPlatform.android
+                  ? Icons.share
+                  : Icons.ios_share,
+            ),
             onPressed: () async {
-              final byteData = await rootBundle.load(widget.pdfPath);
-              final bytes = byteData.buffer.asUint8List();
-              await Printing.sharePdf(
-                bytes: bytes,
-              );
+              try {
+                final bytes = await _getFileBytes(widget.pdfPath);
+                await Printing.sharePdf(bytes: bytes);
+              } catch (e) {
+                debugPrint('Sharing failed: $e');
+              }
             },
-            icon: const Icon(Icons.ios_share),
           ),
           IconButton(
+            padding: EdgeInsets.zero,
+            icon: const Icon(
+              Icons.print,
+            ),
             onPressed: () async {
-              final byteData = await rootBundle.load(widget.pdfPath);
-              final bytes = byteData.buffer.asUint8List();
-              await Printing.layoutPdf(
-                onLayout: (_) async => bytes,
-              );
+              try {
+                final bytes = await _getFileBytes(widget.pdfPath);
+                await Printing.layoutPdf(onLayout: (_) async => bytes);
+              } catch (e) {
+                debugPrint('Printing failed: $e');
+              }
             },
-            icon: const Icon(Icons.print),
-          )
+          ),
         ],
       ),
-      body: Stack(
-        children: [
-          PdfView(
-            builders: PdfViewBuilders<DefaultBuilderOptions>(
-              options: const DefaultBuilderOptions(),
-              documentLoaderBuilder: (_) =>
-                  const Center(child: CupertinoActivityIndicator()),
-              pageLoaderBuilder: (_) =>
-                  const Center(child: CupertinoActivityIndicator()),
-              errorBuilder: (_, error) => Center(child: Text(error.toString())),
-            ),
-            onPageChanged: _pdfControllerSlider.jumpToPage,
-            controller: _pdfController,
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 40,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: PdfPageNumber(
-                controller: _pdfController,
-                builder: (_, loadingState, page, pagesCount) {
-                  if (pagesCount == null || _thumbnailImageList.isEmpty) {
-                    return Container(
-                      height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        color: Colors.blue,
-                      ),
-                    );
+      body: SafeArea(
+        child: Stack(
+          children: [
+            RawKeyboardListener(
+              autofocus: true,
+              focusNode: _focusNode,
+              onKey: (value) async {
+                try {
+                  if (kIsWeb) {
+                    if (value.logicalKey == LogicalKeyboardKey.arrowRight) {
+                      await _pdfController.nextPage(
+                        duration: const Duration(milliseconds: 100),
+                        curve: Curves.easeIn,
+                      );
+                    } else if (value.logicalKey ==
+                        LogicalKeyboardKey.arrowLeft) {
+                      await _pdfController.previousPage(
+                        duration: const Duration(milliseconds: 100),
+                        curve: Curves.easeIn,
+                      );
+                    }
                   }
-                  return Center(
-                    child: Container(
-                      height: 60,
-                      width: _thumbnailImageList.length * 37,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        color: Colors.blue,
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            height: 40,
-                            child: Align(
-                              child: ListView.separated(
-                                shrinkWrap: true,
-                                scrollDirection: Axis.horizontal,
-                                itemBuilder: (context, index) {
-                                  return Container(
-                                    width: 30,
-                                    color: Colors.white,
-                                    child: _thumbnailImageList.isEmpty ||
-                                            _thumbnailImageList.length <= index
-                                        ? const CupertinoActivityIndicator()
-                                        : Image(
-                                            image: MemoryImage(
+                } catch (e) {
+                  print('arrow error ---> $e');
+                }
+
+                // setState(() {});
+              },
+              child: PdfView(
+                builders: PdfViewBuilders<DefaultBuilderOptions>(
+                  options: const DefaultBuilderOptions(),
+                  documentLoaderBuilder: (_) =>
+                      const Center(child: CupertinoActivityIndicator()),
+                  pageLoaderBuilder: (_) =>
+                      const Center(child: CupertinoActivityIndicator()),
+                  errorBuilder: (_, error) =>
+                      Center(child: Text(error.toString())),
+                ),
+                onPageChanged: (page) async {
+                  await _getPageImage(page);
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                controller: _pdfController,
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: PdfPageNumber(
+                  controller: _pdfController,
+                  builder: (_, loadingState, page, pagesCount) {
+                    if (pagesCount == null || _thumbnailImageList.isEmpty) {
+                      return Container();
+                    }
+                    return Center(
+                      child: Container(
+                        height: 60,
+                        width: _thumbnailImageList.length * 37,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.blue,
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              height: 40,
+                              child: Align(
+                                child: ListView.separated(
+                                  shrinkWrap: true,
+                                  scrollDirection: Axis.horizontal,
+                                  itemBuilder: (context, index) {
+                                    return Container(
+                                      width: 30,
+                                      color: Colors.white,
+                                      child: _thumbnailImageList.isEmpty ||
+                                              _thumbnailImageList.length <=
+                                                  index
+                                          ? const CupertinoActivityIndicator()
+                                          : Image(
+                                              image: MemoryImage(
                                                 _thumbnailImageList[index]
-                                                    .bytes),
-                                          ),
-                                  );
-                                },
-                                itemCount: _thumbnailImageList.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(
-                                  width: 5,
+                                                    .bytes,
+                                              ),
+                                            ),
+                                    );
+                                  },
+                                  itemCount: _thumbnailImageList.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 5, width: 5),
                                 ),
                               ),
                             ),
-                          ),
-                          if (pagesCount != 1)
-                            FlutterSlider(
-                              values: [page.toDouble()],
-                              max: pagesCount.toDouble(),
-                              min: 1,
-                              handlerWidth: 45,
-                              handlerHeight: 55,
-                              handler: FlutterSliderHandler(
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  border: Border.all(
-                                    color: Colors.grey,
+                            if (pagesCount != 1)
+                              SliderTheme(
+                                data: SliderThemeData(
+                                  thumbShape: SliderThumbImage(
+                                    image: _sliderImage,
+                                    isDragging: _isDragging,
+                                    rotation: _animationController.value,
                                   ),
+                                  overlayShape: SliderComponentShape.noOverlay,
+                                  trackHeight: 0,
+                                  trackShape: CustomTrackShape(),
                                 ),
-                                child: PdfView(
-                                  builders:
-                                      PdfViewBuilders<DefaultBuilderOptions>(
-                                    options: const DefaultBuilderOptions(),
-                                    pageBuilder: (
-                                      context,
-                                      pageImage,
-                                      index,
-                                      document,
-                                    ) =>
-                                        PhotoViewGalleryPageOptions(
-                                      imageProvider: PdfPageImageProvider(
-                                        pageImage,
-                                        index,
-                                        document.id,
-                                      ),
-                                      minScale:
-                                          PhotoViewComputedScale.contained * 1,
-                                      maxScale:
-                                          PhotoViewComputedScale.contained * 2,
-                                      initialScale:
-                                          PhotoViewComputedScale.contained *
-                                              1.0,
-                                      heroAttributes: PhotoViewHeroAttributes(
-                                        tag: '${document.id}-$index',
-                                      ),
-                                    ),
-                                    documentLoaderBuilder: (_) => const Center(
-                                      child: CupertinoActivityIndicator(),
-                                    ),
-                                    pageLoaderBuilder: (_) => const Center(
-                                      child: CupertinoActivityIndicator(),
-                                    ),
-                                    errorBuilder: (_, error) => Center(
-                                      child: Text(error.toString()),
-                                    ),
-                                  ),
-                                  controller: _pdfControllerSlider,
+                                child: Slider(
+                                  value: _currentPage.toDouble(),
+                                  max: pagesCount.toDouble(),
+                                  min: 1,
+                                  label: _currentPage.toString(),
+                                  onChanged: (double value) {
+                                    final pageNum = value.round();
+                                    setState(() {
+                                      _sliderImage = null;
+                                      _isDragging = true;
+                                      _currentPage = pageNum;
+                                    });
+                                    _sliderImageDebouncer.run(
+                                      () => _getPageImage(value.round()),
+                                    );
+                                  },
+                                  onChangeEnd: (double value) {
+                                    final pageNum = value.round();
+                                    _pdfController.jumpToPage(
+                                      pageNum,
+                                    );
+                                    setState(() {
+                                      _isDragging = false; // <-- Set to false
+                                    });
+                                  },
                                 ),
                               ),
-                              trackBar: const FlutterSliderTrackBar(
-                                inactiveDisabledTrackBarColor:
-                                    Colors.transparent,
-                                activeDisabledTrackBarColor: Colors.transparent,
-                                inactiveTrackBar: BoxDecoration(
-                                  color: Colors.transparent,
-                                ),
-                                activeTrackBar: BoxDecoration(
-                                  color: Colors.transparent,
-                                ),
-                              ),
-                              onDragCompleted:
-                                  (handlerIndex, lowerValue, upperValue) {
-                                _pdfController.jumpToPage(
-                                  (lowerValue as double).toInt(),
-                                );
-                              },
-                              onDragging:
-                                  (handlerIndex, lowerValue, upperValue) {
-                                _pdfControllerSlider.jumpToPage(
-                                  (lowerValue as double).toInt(),
-                                );
-                              },
-                            )
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
