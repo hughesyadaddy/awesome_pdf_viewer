@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdfx/pdfx.dart';
+import 'package:printing/printing.dart';
 
 /// An awesome PDF viewer widget that displays PDF files within a Flutter application.
 ///
@@ -312,24 +313,24 @@ class _AwesomePdfViewer extends State<AwesomePdfViewer>
         actions: widget.actions ??
             [
               IconButton(
-                padding: EdgeInsets.zero,
-                icon: Icon(
-                  Theme.of(context).platform == TargetPlatform.android
-                      ? Icons.share
-                      : Icons.ios_share,
-                ),
                 onPressed: () async {
-                  // ... (Your previous code remains unchanged)
+                  final byteData = await rootBundle.load(widget.pdfPath);
+                  final bytes = byteData.buffer.asUint8List();
+                  await Printing.sharePdf(
+                    bytes: bytes,
+                  );
                 },
+                icon: const Icon(Icons.ios_share),
               ),
               IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.print,
-                ),
                 onPressed: () async {
-                  // ... (Your previous code remains unchanged)
+                  final byteData = await rootBundle.load(widget.pdfPath);
+                  final bytes = byteData.buffer.asUint8List();
+                  await Printing.layoutPdf(
+                    onLayout: (_) async => bytes,
+                  );
                 },
+                icon: const Icon(Icons.print),
               ),
             ],
         shape: widget.shape,
