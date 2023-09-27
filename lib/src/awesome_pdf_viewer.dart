@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:awesome_pdf_viewer/src/debouncer.dart';
@@ -213,6 +214,35 @@ class _AwesomePdfViewer extends State<AwesomePdfViewer>
     }
   }
 
+  // Convert Pdf to Uint8List
+  Future<Uint8List> _getFileBytes(String pathOrUrl) async {
+    if (Uri.parse(pathOrUrl).isAbsolute) {
+      // It's a URL
+      final response = await http.get(Uri.parse(pathOrUrl));
+      if (response.statusCode == 200) {
+        return Uint8List.fromList(response.bodyBytes);
+      } else {
+        throw Exception('Failed to load the file from the URL');
+      }
+    } else if (pathOrUrl.startsWith('assets/')) {
+      // It's an asset
+      try {
+        final data = await rootBundle.load(pathOrUrl);
+        return data.buffer.asUint8List();
+      } catch (e) {
+        throw Exception('Failed to load asset: $e');
+      }
+    } else {
+      // It's a local file path
+      final file = File(pathOrUrl);
+      if (await file.exists()) {
+        return file.readAsBytes();
+      } else {
+        throw Exception('Local file does not exist');
+      }
+    }
+  }
+
   // Generate thumbnails for the slider
   Future<void> _generateSliderImages(double width) async {
     // Get the document from the given path
@@ -313,24 +343,34 @@ class _AwesomePdfViewer extends State<AwesomePdfViewer>
         actions: widget.actions ??
             [
               IconButton(
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  Theme.of(context).platform == TargetPlatform.android
+                      ? Icons.share
+                      : Icons.ios_share,
+                ),
                 onPressed: () async {
-                  final byteData = await rootBundle.load(widget.pdfPath);
-                  final bytes = byteData.buffer.asUint8List();
-                  await Printing.sharePdf(
-                    bytes: bytes,
-                  );
+                  try {
+                    final bytes = await _getFileBytes(widget.pdfPath);
+                    await Printing.sharePdf(bytes: bytes);
+                  } catch (e) {
+                    debugPrint('Sharing failed: $e');
+                  }
                 },
-                icon: const Icon(Icons.ios_share),
               ),
               IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(
+                  Icons.print,
+                ),
                 onPressed: () async {
-                  final byteData = await rootBundle.load(widget.pdfPath);
-                  final bytes = byteData.buffer.asUint8List();
-                  await Printing.layoutPdf(
-                    onLayout: (_) async => bytes,
-                  );
+                  try {
+                    final bytes = await _getFileBytes(widget.pdfPath);
+                    await Printing.layoutPdf(onLayout: (_) async => bytes);
+                  } catch (e) {
+                    debugPrint('Printing failed: $e');
+                  }
                 },
-                icon: const Icon(Icons.print),
               ),
             ],
         shape: widget.shape,
