@@ -13,7 +13,6 @@ dev_dependencies:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.13.6
-  internet_file: ^1.2.0
+  http: ^1.1.0
   pdfx: ^2.3.0
   printing: ^5.10.3

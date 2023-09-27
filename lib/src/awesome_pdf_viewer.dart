@@ -7,7 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:internet_file/internet_file.dart';
+import 'package:http/http.dart' as http;
 import 'package:pdfx/pdfx.dart';
 
 /// An awesome PDF viewer widget that displays PDF files within a Flutter application.
@@ -196,10 +196,15 @@ class _AwesomePdfViewer extends State<AwesomePdfViewer>
     return (await codec.getNextFrame()).image;
   }
 
-  // Retrieve PDF document from the path
   Future<PdfDocument> _getDocument() async {
     if (Uri.parse(widget.pdfPath).isAbsolute) {
-      return PdfDocument.openData(InternetFile.get(widget.pdfPath));
+      final response = await http.get(Uri.parse(widget.pdfPath));
+
+      if (response.statusCode == 200) {
+        return PdfDocument.openData(response.bodyBytes);
+      } else {
+        throw Exception('Failed to load the PDF document from the internet.');
+      }
     } else if (widget.pdfPath.startsWith('assets/')) {
       return PdfDocument.openAsset(widget.pdfPath);
     } else {
