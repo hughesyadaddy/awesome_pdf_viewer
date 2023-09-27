@@ -15,8 +15,7 @@ Add `awesome_pdf_viewer` as a dependency in your `pubspec.yaml` file:
 ```yaml
 dependencies:
   awesome_pdf_viewer:
-    git:
-      url: https://github.com/hughesyadaddy/awesome_pdf_viewer.git
+    git: https://github.com/hughesyadaddy/awesome_pdf_viewer.git
 ```
 Then, run flutter pub get in your terminal to install the package.
 
