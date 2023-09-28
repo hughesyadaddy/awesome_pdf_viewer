@@ -2,4 +2,5 @@
 library awesome_pdf_viewer;
 
 export 'package:pdfx/pdfx.dart';
+export 'package:printing/printing.dart';
 export 'src/awesome_pdf_viewer.dart';

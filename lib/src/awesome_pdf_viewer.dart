@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:awesome_pdf_viewer/src/debouncer.dart';
+import 'package:awesome_pdf_viewer/src/slider_component_shape.dart';
 import 'package:awesome_pdf_viewer/src/slider_thumb_image.dart';
 import 'package:awesome_pdf_viewer/src/slider_track_shape.dart';
 import 'package:flutter/cupertino.dart';
@@ -484,6 +485,9 @@ class _AwesomePdfViewer extends State<AwesomePdfViewer>
                                   overlayShape: SliderComponentShape.noOverlay,
                                   trackHeight: 0,
                                   trackShape: CustomTrackShape(),
+                                  showValueIndicator: ShowValueIndicator.always,
+                                  valueIndicatorShape:
+                                      CustomValueIndicatorShape(),
                                 ),
                                 child: Slider(
                                   value: _currentPage.toDouble(),
