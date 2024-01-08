@@ -10,7 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:pdfx/pdfx.dart';
+import 'package:pdfx_plugin/pdfx_plugin.dart';
 import 'package:printing/printing.dart';
 
 /// An awesome PDF viewer widget that displays PDF files within a Flutter application.

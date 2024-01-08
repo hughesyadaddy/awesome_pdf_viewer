@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   pdfx
+  pdfx_plugin
   printing
 )
 
