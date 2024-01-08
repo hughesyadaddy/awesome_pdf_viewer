@@ -12,7 +12,6 @@ environment:
 dependencies:
   awesome_pdf_viewer:
     path: ../
-  pdfx: ^2.3.0
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2

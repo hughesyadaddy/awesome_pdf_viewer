@@ -255,14 +255,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.10.4"
-  pdfx:
-    dependency: "direct main"
-    description:
-      name: pdfx
-      sha256: cff993dcbcc08b5ecb10b24d4d10ee91fc7934a3ddf72db13a70c25a8bd0f176
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.5.0"
   pdfx_plugin:
     dependency: transitive
     description:
